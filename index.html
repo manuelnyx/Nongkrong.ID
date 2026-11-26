@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nongkrong.ID | Cari Tempat Nongkrong Terdekat</title>
+  <meta name="description" content="Temukan rekomendasi kafe terdekat dari lokasimu berdasarkan budget, rating ulasan, ketersediaan Wi-Fi, colokan, dan jam operasional." />
+  <meta name="theme-color" content="#0B0B0B" />
+
+  <!-- Transparent Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+
+  <!-- Fonts: Bricolage Grotesque (display & UI), DM Sans (body), JetBrains Mono (numbers) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#0B0B0B',
+            surface: '#141414',
+            elevated: '#1E1E1E',
+            card: '#181818',
+            crimson: '#D9382A',
+            crimsonDark: '#B82C20',
+            flame: '#FF6A5C',
+            crisp: '#F5F5F4',
+            secondary: '#CFCFCB',
+            muted: '#A3A3A0',
+          },
+          fontFamily: {
+            anton: ['"Bricolage Grotesque"', 'sans-serif'],
+            display: ['"Bricolage Grotesque"', 'sans-serif'],
+            sans: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          boxShadow: {
+            'spatial': '0 20px 44px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.16)',
+            'crimson-glow': 'none',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #0B0B0B;
+      color: #F5F5F4;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a[href], button, select, summary, label[for], [role="button"] {
+      cursor: pointer;
+    }
+
+    button:disabled, [aria-disabled="true"] {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    :focus-visible {
+      outline: 2px solid #FF6A5C;
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .hairline {
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .hairline-strong {
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+
+    /* Solid fills only: no gradients. */
+    .btn-crimson-grad {
+      background: #D9382A;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn-crimson-grad:hover {
+        background: #C42F22;
+      }
+    }
+
+    /* Red used as text on near-black needs a lighter tint to hold 4.5:1 contrast; fills keep the deeper red. */
+    .text-crimson,
+    .hover\:text-crimson:hover,
+    .group:hover .group-hover\:text-crimson {
+      color: #FF6A5C !important;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B0B0B;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #363636;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #D9382A;
+    }
+
+    /* Leaflet Map & Dark Theme */
+    #leaflet-map {
+      width: 100%;
+      height: 100%;
+      background: #0E0E0E;
+      z-index: 1;
+    }
+
+    #leaflet-map.map-theme-dark .leaflet-tile-pane {
+      filter: invert(100%) hue-rotate(180deg) brightness(93%) contrast(92%) saturate(75%);
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(11, 11, 11, 0.88) !important;
+      color: #A3A3A0 !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 10px !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 2px 8px !important;
+    }
+    .leaflet-control-attribution a {
+      color: #FF6A5C !important;
+    }
+
+    /* Map Pins */
+    .cafe-pin-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cafe-pin-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: #181818;
+      border: 1.5px solid rgba(255, 255, 255, 0.65);
+      color: #F5F5F4;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.75);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    .cafe-pin-wrap.is-active .cafe-pin-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: #D9382A;
+      border: 2px solid #FFFFFF;
+      color: #FFFFFF;
+      font-size: 11px;
+      box-shadow: 0 0 0 4px rgba(217, 56, 42, 0.35);
+      transform: scale(1.08);
+    }
+
+    .cafe-pin-label {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(11, 11, 11, 0.92);
+      color: #F5F5F4;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      pointer-events: none;
+    }
+
+    .cafe-pin-wrap.is-active .cafe-pin-label {
+      background: #0B0B0B;
+      color: #FFFFFF;
+      border-color: #D9382A;
+      font-weight: 700;
+    }
+
+    .user-gps-pin {
+      width: 20px;
+      height: 20px;
+      border-radius: 9999px;
+      background: #D9382A;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 0 0 5px rgba(217, 56, 42, 0.35), 0 4px 12px rgba(0, 0, 0, 0.8);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-crimson selection:text-crisp">
+
+  <!-- Reusable SVG Logo Definition (Transparent Background) -->
+  <svg class="sr-only" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="nongkrong-logo-mark" viewBox="0 0 1000 1000">
+        <path fill="#EC594D" fill-rule="evenodd" d="M 215.0 489.0 L 215.0 489.0 L 205.0 491.5 Q 195.0 494.0 187.0 498.5 Q 179.0 503.0 174.0 507.5 Q 169.0 512.0 163.5 521.0 Q 158.0 530.0 109.0 725.5 Q 60.0 921.0 58.0 940.0 L 58.0 940.0 L 73.5 940.0 Q 89.0 940.0 107.5 937.5 Q 126.0 935.0 145.0 929.5 Q 164.0 924.0 180.5 916.0 Q 197.0 908.0 209.5 899.0 Q 222.0 890.0 233.5 878.0 Q 245.0 866.0 253.5 853.5 Q 262.0 841.0 268.0 828.0 Q 274.0 815.0 299.0 716.0 Q 324.0 617.0 324.0 612.5 Q 324.0 608.0 291.0 560.0 L 291.0 560.0 L 264.0 665.0 Q 237.0 770.0 229.0 793.0 Q 221.0 816.0 211.0 830.0 Q 201.0 844.0 188.0 855.0 Q 175.0 866.0 160.0 873.5 Q 145.0 881.0 135.0 884.0 Q 125.0 887.0 119.0 886.0 L 119.0 886.0 L 121.0 874.0 Q 123.0 862.0 169.5 678.0 Q 216.0 494.0 215.0 489.0 Z M 806.0 161.0 Q 796.0 160.0 787.0 163.0 Q 778.0 166.0 771.0 172.5 Q 764.0 179.0 760.0 187.5 Q 756.0 196.0 755.5 206.5 Q 755.0 217.0 757.5 225.0 Q 760.0 233.0 765.5 240.0 Q 771.0 247.0 781.0 252.0 Q 791.0 257.0 799.5 257.5 Q 808.0 258.0 818.5 254.0 Q 829.0 250.0 834.5 245.0 Q 840.0 240.0 845.0 229.0 Q 850.0 218.0 850.0 208.5 Q 850.0 199.0 846.5 190.5 Q 843.0 182.0 836.5 175.5 Q 830.0 169.0 823.0 165.5 Q 816.0 162.0 806.0 161.0 Z M 847.5 68.5 Q 837.0 65.0 823.0 63.0 Q 809.0 61.0 795.5 61.5 Q 782.0 62.0 774.0 63.5 Q 766.0 65.0 752.0 70.5 Q 738.0 76.0 725.5 84.0 Q 713.0 92.0 705.0 99.5 Q 697.0 107.0 688.5 118.5 Q 680.0 130.0 674.5 141.5 Q 669.0 153.0 665.0 171.5 Q 661.0 190.0 661.0 202.0 Q 661.0 214.0 663.0 225.5 Q 665.0 237.0 676.5 269.0 Q 688.0 301.0 738.0 395.0 L 738.0 395.0 L 752.5 383.5 Q 767.0 372.0 773.0 363.0 L 773.0 363.0 L 753.0 325.5 Q 733.0 288.0 721.0 255.5 Q 709.0 223.0 708.0 217.0 Q 707.0 211.0 708.0 197.0 Q 709.0 183.0 712.0 173.5 Q 715.0 164.0 720.5 155.0 Q 726.0 146.0 736.5 136.0 Q 747.0 126.0 760.0 119.0 Q 773.0 112.0 791.0 110.0 Q 809.0 108.0 822.5 111.0 Q 836.0 114.0 846.5 119.5 Q 857.0 125.0 867.5 135.0 Q 878.0 145.0 885.5 158.5 Q 893.0 172.0 895.5 181.0 Q 898.0 190.0 898.5 199.0 Q 899.0 208.0 897.0 219.0 Q 895.0 230.0 889.5 244.0 Q 884.0 258.0 871.5 281.5 Q 859.0 305.0 842.5 330.0 Q 826.0 355.0 805.5 377.0 Q 785.0 399.0 746.5 432.0 Q 708.0 465.0 690.0 488.0 Q 672.0 511.0 661.0 533.5 Q 650.0 556.0 619.0 660.0 L 619.0 660.0 L 613.5 653.0 Q 608.0 646.0 519.0 495.5 Q 430.0 345.0 422.0 334.5 Q 414.0 324.0 402.5 314.0 Q 391.0 304.0 377.5 298.0 Q 364.0 292.0 346.5 289.0 Q 329.0 286.0 313.0 287.0 Q 297.0 288.0 282.0 292.5 Q 267.0 297.0 253.0 305.5 Q 239.0 314.0 229.0 325.0 Q 219.0 336.0 211.0 351.0 Q 203.0 366.0 197.5 383.5 Q 192.0 401.0 180.0 454.0 L 180.0 454.0 L 194.5 452.5 Q 209.0 451.0 224.0 452.5 Q 239.0 454.0 249.5 458.5 Q 260.0 463.0 270.0 471.5 Q 280.0 480.0 289.5 493.5 Q 299.0 507.0 414.0 695.5 Q 529.0 884.0 543.5 899.5 Q 558.0 915.0 576.5 924.5 Q 595.0 934.0 607.5 936.5 Q 620.0 939.0 635.5 939.0 Q 651.0 939.0 664.5 936.0 Q 678.0 933.0 694.5 924.5 Q 711.0 916.0 719.5 908.0 Q 728.0 900.0 736.0 889.0 Q 744.0 878.0 750.0 864.0 Q 756.0 850.0 764.0 821.5 Q 772.0 793.0 860.0 439.0 L 860.0 439.0 L 858.0 438.0 L 829.5 462.5 Q 801.0 487.0 762.5 638.5 Q 724.0 790.0 713.0 823.5 Q 702.0 857.0 694.0 866.5 Q 686.0 876.0 678.5 880.5 Q 671.0 885.0 660.5 888.0 Q 650.0 891.0 636.0 891.0 Q 622.0 891.0 607.0 886.0 Q 592.0 881.0 582.0 872.0 Q 572.0 863.0 461.0 680.0 Q 350.0 497.0 334.5 473.5 Q 319.0 450.0 304.5 437.0 Q 290.0 424.0 279.5 419.0 Q 269.0 414.0 244.0 407.0 L 244.0 407.0 L 243.0 403.0 Q 242.0 399.0 247.5 386.0 Q 253.0 373.0 257.5 366.5 Q 262.0 360.0 268.5 354.0 Q 275.0 348.0 283.5 343.5 Q 292.0 339.0 300.5 337.0 Q 309.0 335.0 321.0 335.0 Q 333.0 335.0 341.5 337.0 Q 350.0 339.0 361.5 345.0 Q 373.0 351.0 383.0 363.0 Q 393.0 375.0 506.5 567.0 Q 620.0 759.0 636.0 782.0 L 636.0 782.0 L 661.5 687.0 Q 687.0 592.0 698.5 565.0 Q 710.0 538.0 723.5 520.0 Q 737.0 502.0 752.0 487.5 Q 767.0 473.0 795.0 450.5 Q 823.0 428.0 845.0 403.0 Q 867.0 378.0 889.5 342.0 Q 912.0 306.0 919.5 290.5 Q 927.0 275.0 934.0 254.5 Q 941.0 234.0 942.5 226.5 Q 944.0 219.0 943.0 197.0 Q 942.0 175.0 939.0 164.5 Q 936.0 154.0 929.5 140.5 Q 923.0 127.0 916.0 118.0 Q 909.0 109.0 898.5 99.0 Q 888.0 89.0 873.0 80.5 Q 858.0 72.0 847.5 68.5 Z"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 1: DESCRIPTIVE LANDING PAGE (Shown First on Initial Visit)      -->
+  <!-- ===================================================================== -->
+  <section id="landing-stage" class="fixed inset-0 z-50 overflow-y-auto bg-obsidian" style="background-image: inherit;" aria-labelledby="landing-title">
+    <div class="min-h-full w-full flex flex-col items-center px-5 sm:px-10"
+         style="padding-top: max(1.5rem, env(safe-area-inset-top)); padding-bottom: max(1rem, env(safe-area-inset-bottom)); padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right));">
+
+      <!-- Main centered content -->
+      <div class="flex-1 w-full flex flex-col items-center justify-center text-center py-10">
+
+        <!-- Brand monogram -->
+        <div class="inline-flex items-center gap-3.5 mb-10 sm:mb-14">
+          <span class="w-11 h-11 rounded-xl bg-surface/90 border hairline-strong flex items-center justify-center p-1.5 shadow-lg" aria-hidden="true">
+            <svg class="w-full h-full" viewBox="0 0 1000 1000" aria-hidden="true">
+              <use href="#nongkrong-logo-mark"></use>
+            </svg>
+          </span>
+          <span class="w-px h-6 bg-white/30" aria-hidden="true"></span>
+          <span class="font-display font-bold text-sm tracking-[0.18em] uppercase text-crisp">
+            Nongkrong.ID
+          </span>
+        </div>
+
+        <!-- Kicker -->
+        <p class="font-display text-xs sm:text-sm font-bold tracking-[0.16em] uppercase text-secondary max-w-[17rem] sm:max-w-none mb-3 sm:mb-4">
+          BINGUNG NONGKRONG DIMANA? CARI DI
+        </p>
+
+        <!-- Headline -->
+        <h1 id="landing-title" class="font-anton font-extrabold uppercase leading-[1.08] tracking-tight text-crisp mb-7 sm:mb-9" style="font-size: clamp(2rem, 10vw, 6.5rem);">
+          NONGKRONG<span class="text-flame">.ID</span>
+        </h1>
+
+        <!-- Short Gen Z description -->
+        <p class="text-sm sm:text-base text-secondary leading-[1.75] max-w-md sm:max-w-xl mb-10 sm:mb-12">
+          Capek muter-muter nyari tempat? Tinggal pilih budget, rating, sama fasilitas, nanti kafe terdekat yang pas buat nugas, ngopi, atau ngobrol langsung muncul di peta. Gas cari!
+        </p>
+
+        <!-- Single CTA -->
+        <button
+          type="button"
+          onclick="enterFilterStage(false)"
+          class="w-full sm:w-auto min-h-[52px] px-10 py-4 rounded-lg btn-crimson-grad border hairline-strong font-display font-extrabold text-sm tracking-[0.14em] uppercase text-white shadow-crimson-glow hover:brightness-110 active:brightness-125 transition-all flex items-center justify-center"
+          style="max-width: 22rem;"
+        >
+          CARI SEKARANG!
+        </button>
+      </div>
+
+      <!-- Copyright -->
+      <footer class="w-full max-w-3xl border-t hairline pt-5 pb-3 text-center text-xs text-muted leading-relaxed">
+        &copy; <span id="copyright-year">2026</span> Nongkrong.ID by Emmanuel Abet Rossi Paays. All Rights Reserved.
+      </footer>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 2 & 3: MAIN APPLICATION WORKSPACE (Filter Left + Map Right)     -->
+  <!-- ===================================================================== -->
+  <div id="app-workspace" class="flex-1 flex flex-col h-screen overflow-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="px-4 sm:px-6 py-3 border-b hairline bg-[#0E0E0E] flex items-center justify-between gap-3 shrink-0 z-30">
+      <button 
+        type="button"
+        onclick="showLandingStage()"
+        aria-label="Kembali ke halaman pengantar"
+        class="inline-flex items-center gap-2.5 text-left group"
+      >
+        <span class="w-9 h-9 rounded-lg bg-surface border hairline-strong group-hover:border-[#FF6A5C] flex items-center justify-center p-1.5 transition-colors" aria-hidden="true">
+          <svg class="w-full h-full" viewBox="0 0 1000 1000" aria-hidden="true">
+            <use href="#nongkrong-logo-mark"></use>
+          </svg>
+        </span>
+        <div>
+          <span class="font-display font-bold text-xs sm:text-sm tracking-[0.14em] uppercase text-crisp group-hover:text-crimson transition-colors block leading-none">
+            Nongkrong.ID
+          </span>
+          <span class="text-[11px] text-muted block mt-0.5">Klik untuk kembali ke pengantar</span>
+        </div>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <button 
+          type="button"
+          onclick="toggleMapTheme()"
+          class="min-h-[38px] px-3.5 py-1.5 rounded-full bg-surface hover:bg-elevated border hairline text-xs font-medium text-crisp flex items-center gap-1.5 transition-colors"
+        >
+          <i data-lucide="sun-moon" class="w-3.5 h-3.5 text-crimson" aria-hidden="true"></i>
+          <span id="theme-btn-label" class="hidden sm:inline">Peta: Gelap</span>
+        </button>
+
+        <!-- Mobile View Switcher (Filter/Daftar vs Peta) -->
+        <button 
+          type="button"
+          id="mobile-toggle-map-btn"
+          onclick="toggleMobileMapPane()"
+          class="lg:hidden min-h-[38px] px-3.5 py-1.5 rounded-full btn-crimson-grad border hairline-strong text-xs font-semibold text-white flex items-center gap-1.5"
+        >
+          <i data-lucide="map" class="w-3.5 h-3.5" aria-hidden="true"></i>
+          <span id="mobile-toggle-map-label">Lihat Peta</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- SPLIT WORKSPACE: LEFT SIDEBAR (FILTER -> RESULTS) + RIGHT MAP STAGE -->
+    <div class="flex-1 flex flex-col lg:flex-row min-h-0 relative">
+
+      <!-- ================================================================= -->
+      <!-- LEFT PANEL: STEP 2 (FORM FILTER) & STEP 3 (DAFTAR HASIL)          -->
+      <!-- ================================================================= -->
+      <aside id="left-panel" class="w-full lg:w-[420px] xl:w-[440px] h-full bg-surface border-r hairline flex flex-col shrink-0 z-20 min-h-0">
+
+        <!-- --------------------------------------------------------------- -->
+        <!-- VIEW A: FORM PENGISIAN FILTER & LOKASI (Default before search)  -->
+        <!-- --------------------------------------------------------------- -->
+        <div id="filter-pane" class="flex-1 flex flex-col min-h-0">
+          
+          <div class="px-5 py-3.5 border-b hairline bg-obsidian/50 flex items-center justify-between">
+            <div>
+              <h2 class="font-display font-bold text-sm uppercase tracking-wider text-crisp">
+                Atur Lokasi &amp; Filter Kafe
+              </h2>
+              <p class="text-xs text-muted mt-0.5">Isi kriteria di bawah lalu tekan Cari Kafe</p>
+            </div>
+            <button 
+              type="button"
+              onclick="resetFilterForm()"
+              class="text-xs font-medium text-muted hover:text-crimson transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+
+          <!-- Scrollable Filter Controls -->
+          <div class="flex-1 overflow-y-auto p-5 space-y-5">
+
+            <!-- 1. LOKASI PENGGUNA (GPS / KOTA / AREA + RADIUS) -->
+            <div class="bg-obsidian/70 border hairline-strong rounded-2xl p-4 space-y-3.5">
+              <div class="flex items-center justify-between">
+                <span class="font-display text-xs font-bold uppercase tracking-wider text-crisp flex items-center gap-1.5">
+                  <i data-lucide="locate-fixed" class="w-3.5 h-3.5 text-crimson" aria-hidden="true"></i>
+                  1. Lokasi Kamu &amp; Kota
+                </span>
+                <span id="gps-badge-status" class="font-mono text-[11px] text-muted">Belum aktif</span>
+              </div>
+
+              <!-- GPS Button -->
+              <button 
+                type="button"
+                id="btn-activate-gps"
+                onclick="activateUserGps()"
+                class="w-full min-h-[42px] py-2.5 px-4 rounded-xl bg-elevated hover:bg-crimson border hairline-strong text-xs font-semibold text-crisp flex items-center justify-center gap-2 transition-colors"
+              >
+                <i data-lucide="navigation" class="w-3.5 h-3.5 text-crimson" aria-hidden="true"></i>
+                <span id="btn-gps-text">Aktifkan Lokasi GPS Saya</span>
+              </button>
+
+              <!-- Wilayah / Kota Dropdown -->
+              <div>
+                <label for="region-select" class="text-[11px] font-medium text-secondary block mb-1">
+                  Atau Pilih Kota / Wilayah:
+                </label>
+                <div class="relative">
+                  <select 
+                    id="region-select"
+                    onchange="onRegionSelectChange()"
+                    class="w-full min-h-[40px] appearance-none bg-surface border hairline focus:border-crimson rounded-xl pl-3.5 pr-9 py-2 text-xs font-medium text-crisp outline-none cursor-pointer"
+                  >
+                    <option value="">Semua Wilayah Indonesia</option>
+                    <option value="Jakarta Selatan">Jakarta Selatan</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
+                </div>
+              </div>
+
+              <!-- Pencarian Titik Area Manual -->
+              <div>
+                <label for="manual-loc-input" class="text-[11px] font-medium text-secondary block mb-1">
+                  Atau Ketik Area Spesifik (Untuk Hitung Jarak):
+                </label>
+                <div class="flex gap-2">
+                  <input 
+                    type="text" 
+                    id="manual-loc-input"
+                    placeholder="Contoh: Blok M, Tebet, Braga Bandung..."
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();searchAreaCoordinate();}"
+                    class="flex-1 min-h-[38px] bg-surface border hairline focus:border-crimson rounded-xl px-3 py-1.5 text-xs text-crisp placeholder:text-muted/60 outline-none"
+                  />
+                  <button 
+                    type="button"
+                    onclick="searchAreaCoordinate()"
+                    class="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-surface hover:bg-elevated border hairline-strong text-xs font-semibold text-crisp transition-colors"
+                  >
+                    Set Titik
+                  </button>
+                </div>
+              </div>
+
+              <!-- Radius Jarak (Muncul/Aktif saat GPS atau Titik Area disetel) -->
+              <div id="radius-box" class="pt-1 border-t hairline hidden">
+                <span class="text-[11px] font-medium text-secondary block mb-2">Radius Jarak Maksimum dari Lokasimu:</span>
+                <div class="grid grid-cols-5 gap-1.5" id="radius-group">
+                  <button type="button" data-val="1" onclick="selectRadius(1)" class="rad-chip min-h-[36px] rounded-lg text-xs font-semibold border hairline bg-surface text-secondary">&le; 1km</button>
+                  <button type="button" data-val="2" onclick="selectRadius(2)" class="rad-chip min-h-[36px] rounded-lg text-xs font-semibold border hairline bg-surface text-secondary">&le; 2km</button>
+                  <button type="button" data-val="5" onclick="selectRadius(5)" class="rad-chip min-h-[36px] rounded-lg text-xs font-semibold border bg-crimson border-crimson text-white">&le; 5km</button>
+                  <button type="button" data-val="10" onclick="selectRadius(10)" class="rad-chip min-h-[36px] rounded-lg text-xs font-semibold border hairline bg-surface text-secondary">&le; 10km</button>
+                  <button type="button" data-val="0" onclick="selectRadius(0)" class="rad-chip min-h-[36px] rounded-lg text-xs font-semibold border hairline bg-surface text-secondary">Semua</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. BUDGET MAKSIMUM -->
+            <div>
+              <span class="font-display text-xs font-bold uppercase tracking-wider text-crisp block mb-2">
+                2. Budget Maksimum
+              </span>
+              <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5" id="budget-group">
+                <button type="button" data-val="20000" onclick="selectBudget(20000)" class="budget-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">&le; 20rb</button>
+                <button type="button" data-val="30000" onclick="selectBudget(30000)" class="budget-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">&le; 30rb</button>
+                <button type="button" data-val="50000" onclick="selectBudget(50000)" class="budget-chip min-h-[38px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white">&le; 50rb</button>
+                <button type="button" data-val="75000" onclick="selectBudget(75000)" class="budget-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">&le; 75rb</button>
+                <button type="button" data-val="300000" onclick="selectBudget(300000)" class="budget-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">Semua</button>
+              </div>
+            </div>
+
+            <!-- 3. MINIMUM RATING -->
+            <div>
+              <span class="font-display text-xs font-bold uppercase tracking-wider text-crisp block mb-2">
+                3. Minimum Rating
+              </span>
+              <div class="grid grid-cols-5 gap-1.5" id="rating-group">
+                <button type="button" data-val="0" onclick="selectRating(0)" class="rating-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">Semua</button>
+                <button type="button" data-val="4.0" onclick="selectRating(4.0)" class="rating-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">4.0+</button>
+                <button type="button" data-val="4.5" onclick="selectRating(4.5)" class="rating-chip min-h-[38px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white">4.5+</button>
+                <button type="button" data-val="4.7" onclick="selectRating(4.7)" class="rating-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">4.7+</button>
+                <button type="button" data-val="4.9" onclick="selectRating(4.9)" class="rating-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">4.9+</button>
+              </div>
+            </div>
+
+            <!-- 4. FASILITAS -->
+            <div>
+              <span class="font-display text-xs font-bold uppercase tracking-wider text-crisp block mb-2">
+                4. Fasilitas yang Dibutuhkan
+              </span>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" id="fac-wifi" aria-pressed="false" onclick="toggleFacility('wifi')" class="min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp flex items-center justify-center gap-1.5 transition-colors">
+                  <i data-lucide="wifi" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                  <span>Wi-Fi</span>
+                </button>
+                <button type="button" id="fac-power" aria-pressed="false" onclick="toggleFacility('power')" class="min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp flex items-center justify-center gap-1.5 transition-colors">
+                  <i data-lucide="plug-zap" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                  <span>Colokan</span>
+                </button>
+                <button type="button" id="fac-24h" aria-pressed="false" onclick="toggleFacility('open24h')" class="min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp flex items-center justify-center gap-1.5 transition-colors">
+                  <i data-lucide="clock" class="w-3.5 h-3.5" aria-hidden="true"></i>
+                  <span>24 Jam</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 5. URUTKAN BERDASARKAN -->
+            <div>
+              <span class="font-display text-xs font-bold uppercase tracking-wider text-crisp block mb-2">
+                5. Urutkan Hasil
+              </span>
+              <div class="grid grid-cols-2 gap-2" id="sort-group">
+                <button type="button" data-val="nearest" onclick="selectSort('nearest')" class="sort-chip min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">Terdekat dari Lokasi</button>
+                <button type="button" data-val="rating" onclick="selectSort('rating')" class="sort-chip min-h-[40px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white">Rating Tertinggi</button>
+                <button type="button" data-val="price_low" onclick="selectSort('price_low')" class="sort-chip min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">Harga Termurah</button>
+                <button type="button" data-val="price_high" onclick="selectSort('price_high')" class="sort-chip min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp">Harga Termahal</button>
+              </div>
+            </div>
+
+            <!-- 6. KATA KUNCI NAMA KAFE (OPSIONAL) -->
+            <div>
+              <label for="keyword-input" class="font-display text-xs font-bold uppercase tracking-wider text-crisp block mb-2">
+                6. Cari Nama Kafe (Opsional)
+              </label>
+              <div class="relative">
+                <i data-lucide="search" class="w-3.5 h-3.5 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
+                <input 
+                  type="text" 
+                  id="keyword-input"
+                  placeholder="Ketik nama kafe tertentu jika ada..."
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();executeCafeSearch();}"
+                  class="w-full min-h-[40px] bg-obsidian border hairline focus:border-crimson rounded-xl pl-9 pr-3.5 py-2 text-xs text-crisp placeholder:text-muted/60 outline-none"
+                />
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Sticky Bottom CTA: CARI KAFE -->
+          <div class="p-4 border-t hairline bg-[#101010]">
+            <button 
+              type="button"
+              id="btn-submit-search"
+              onclick="executeCafeSearch()"
+              class="w-full min-h-[48px] py-3 px-5 rounded-xl btn-crimson-grad border hairline-strong font-display font-extrabold text-xs tracking-[0.14em] uppercase text-white shadow-crimson-glow hover:brightness-110 transition-all flex items-center justify-center gap-2"
+            >
+              <i data-lucide="search" class="w-4 h-4" aria-hidden="true"></i>
+              <span id="btn-submit-label">TAMPILKAN REKOMENDASI KAFE</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- --------------------------------------------------------------- -->
+        <!-- VIEW B: DAFTAR HASIL REKOMENDASI (Shown AFTER user clicks Cari) -->
+        <!-- --------------------------------------------------------------- -->
+        <div id="results-pane" class="hidden flex-1 flex flex-col min-h-0">
+          
+          <!-- Top Bar: Back to Filter Button + Result Summary -->
+          <div class="px-5 py-3.5 border-b hairline bg-obsidian/70 flex items-center justify-between gap-2">
+            <button 
+              type="button"
+              onclick="backToFilterPane()"
+              class="min-h-[36px] px-3.5 py-1.5 rounded-lg bg-surface hover:bg-elevated border hairline-strong text-xs font-semibold text-crisp flex items-center gap-1.5 transition-colors"
+            >
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-crimson" aria-hidden="true"></i>
+              <span>Ubah Filter</span>
+            </button>
+
+            <span id="results-count-text" class="font-mono text-xs font-semibold text-secondary truncate">
+              0 Kafe Ditemukan
+            </span>
+          </div>
+
+          <!-- Scrollable Cafe Cards List -->
+          <div id="results-list-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <!-- Populated dynamically after user clicks Cari Kafe -->
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ================================================================= -->
+      <!-- RIGHT PANEL: INTERACTIVE MAP CANVAS & FLOATING ACTIVE CAFE CARD   -->
+      <!-- ================================================================= -->
+      <main id="map-pane" class="hidden lg:flex flex-1 p-3 sm:p-5 bg-obsidian flex-col min-h-0 relative">
+        <div class="relative flex-1 w-full h-full rounded-[22px] bg-[#0F0F0F] border hairline overflow-hidden shadow-2xl flex flex-col justify-between">
+          
+          <!-- LEAFLET MAP -->
+          <div id="leaflet-map" class="map-theme-dark absolute inset-0 w-full h-full"></div>
+
+          <!-- TOP STATUS PILL OVERLAY -->
+          <div class="relative z-20 p-4 flex items-center justify-between pointer-events-none">
+            <div class="bg-[#141414]/92 backdrop-blur-md border hairline-strong rounded-full px-4 py-2 flex items-center gap-2.5 pointer-events-auto shadow-lg">
+              <span id="map-status-dot" class="w-2 h-2 rounded-full bg-muted"></span>
+              <span id="map-overlay-message" class="text-xs font-medium text-crisp">
+                Siap mencari: Atur lokasi &amp; filter di panel kiri lalu klik Tampilkan Rekomendasi Kafe
+              </span>
+            </div>
+
+            <!-- Zoom Controls Top Right -->
+            <div class="flex items-center gap-1.5 pointer-events-auto">
+              <button 
+                type="button"
+                onclick="zoomMap(1)"
+                aria-label="Perbesar Peta"
+                class="w-9 h-9 rounded-xl bg-[#161616]/95 hover:bg-elevated border hairline hover:border-crimson text-crisp flex items-center justify-center shadow-lg transition-colors"
+              >
+                <i data-lucide="plus" class="w-4 h-4" aria-hidden="true"></i>
+              </button>
+              <button 
+                type="button"
+                onclick="zoomMap(-1)"
+                aria-label="Perkecil Peta"
+                class="w-9 h-9 rounded-xl bg-[#161616]/95 hover:bg-elevated border hairline hover:border-crimson text-crisp flex items-center justify-center shadow-lg transition-colors"
+              >
+                <i data-lucide="minus" class="w-4 h-4" aria-hidden="true"></i>
+              </button>
+              <button 
+                type="button"
+                onclick="fitMapToCurrentResults()"
+                aria-label="Sesuaikan Area Peta"
+                class="w-9 h-9 rounded-xl bg-[#161616]/95 hover:bg-elevated border hairline hover:border-crimson text-crimson flex items-center justify-center shadow-lg transition-colors"
+                title="Tampilkan Semua Hasil di Peta"
+              >
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- BOTTOM OVERLAY: FLOATING SELECTED CAFE DETAIL CARD (Hidden until user runs search) -->
+          <div id="map-bottom-overlay" class="hidden relative z-20 p-4 sm:p-5 pointer-events-none flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4">
+            <div id="floating-cafe-card" class="w-full max-w-[390px] bg-[#161616]/95 backdrop-blur-xl border hairline-strong rounded-2xl p-4 sm:p-5 shadow-spatial pointer-events-auto">
+              <!-- Populated when a cafe is selected -->
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none" role="status" aria-live="polite">
+    <div class="bg-[#1C1C1C] border border-crimson px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5">
+      <span class="w-2 h-2 rounded-full bg-crimson"></span>
+      <span id="toast-text" class="text-xs font-medium text-crisp">Siap</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT: 3-STAGE USER FLOW (LANDING -> FILTER/GPS -> MAP RESULTS)  -->
+  <!-- ===================================================================== -->
+  <script>
+    const state = {
+      hasSearched: false,
+      cafes: [],
+      selectedCafeId: null,
+      region: '',
+      maxBudget: 50000,
+      minRating: 4.5,
+      wifi: false,
+      power: false,
+      open24h: false,
+      sortBy: 'rating',
+      userLat: null,
+      userLon: null,
+      userLabel: '',
+      radiusKm: 5,
+      isMapDark: true,
+      mobileShowingMap: false
+    };
+
+    let map = null;
+    let markersLayer = null;
+    let userMarker = null;
+
+    // 1. INITIALIZE LEAFLET MAP (CLEAN STANDBY STATE - NO PINS DUMPED ON LOAD)
+    function initMap() {
+      if (map) return;
+      map = L.map('leaflet-map', {
+        zoomControl: false,
+        attributionControl: true
+      }).setView([-6.244, 106.805], 12);
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+    }
+
+    // 2. STAGE TRANSITIONS (STAGE 1: LANDING <-> STAGE 2: FILTER)
+    function enterFilterStage(autoTriggerGps) {
+      document.getElementById('landing-stage').classList.add('hidden');
+      initMap();
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 60);
+
+      if (autoTriggerGps) {
+        activateUserGps();
+      }
+    }
+
+    function showLandingStage() {
+      document.getElementById('landing-stage').classList.remove('hidden');
+    }
+
+    function toggleMobileMapPane() {
+      state.mobileShowingMap = !state.mobileShowingMap;
+      const leftPanel = document.getElementById('left-panel');
+      const mapPane = document.getElementById('map-pane');
+      const btnLbl = document.getElementById('mobile-toggle-map-label');
+
+      if (state.mobileShowingMap) {
+        leftPanel.classList.add('hidden');
+        mapPane.classList.remove('hidden');
+        mapPane.classList.add('flex');
+        btnLbl.textContent = state.hasSearched ? 'Lihat Daftar' : 'Ke Filter';
+        setTimeout(() => {
+          if (map) map.invalidateSize();
+        }, 60);
+      } else {
+        leftPanel.classList.remove('hidden');
+        mapPane.classList.add('hidden');
+        mapPane.classList.remove('flex');
+        btnLbl.textContent = 'Lihat Peta';
+      }
+    }
+
+    function toggleMapTheme() {
+      state.isMapDark = !state.isMapDark;
+      document.getElementById('leaflet-map').classList.toggle('map-theme-dark', state.isMapDark);
+      document.getElementById('theme-btn-label').textContent = state.isMapDark ? 'Peta: Gelap' : 'Peta: Terang';
+    }
+
+    function zoomMap(delta) {
+      if (map) map.setZoom(map.getZoom() + delta);
+    }
+
+    // 3. LOAD METADATA FOR CITY DROPDOWN (DOES NOT DUMP MARKERS ON MAP)
+    async function loadRegionsMetadata() {
+      try {
+        const res = await fetch('/metadata');
+        if (!res.ok) return;
+        const meta = await res.json();
+
+        const sel = document.getElementById('region-select');
+        if (sel && Array.isArray(meta.regions)) {
+          const names = meta.regions.map((r) => r.name).sort((a, b) => a.localeCompare(b, 'id'));
+          let html = `<option value="">Semua Wilayah Indonesia</option>`;
+          names.forEach((name) => {
+            html += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+          });
+          sel.innerHTML = html;
+        }
+      } catch (e) {}
+    }
+
+    // 4. FILTER FORM CONTROLS (STAGE 2)
+    function selectBudget(val) {
+      state.maxBudget = val;
+      document.querySelectorAll('.budget-chip').forEach((btn) => {
+        const active = parseInt(btn.dataset.val, 10) === val;
+        btn.className = active
+          ? 'budget-chip min-h-[38px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white'
+          : 'budget-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp';
+      });
+    }
+
+    function selectRating(val) {
+      state.minRating = val;
+      document.querySelectorAll('.rating-chip').forEach((btn) => {
+        const active = parseFloat(btn.dataset.val) === val;
+        btn.className = active
+          ? 'rating-chip min-h-[38px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white'
+          : 'rating-chip min-h-[38px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp';
+      });
+    }
+
+    function toggleFacility(key) {
+      state[key] = !state[key];
+      const idMap = { wifi: 'fac-wifi', power: 'fac-power', open24h: 'fac-24h' };
+      const btn = document.getElementById(idMap[key]);
+      if (btn) {
+        btn.setAttribute('aria-pressed', String(state[key]));
+        btn.className = state[key]
+          ? 'min-h-[40px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white flex items-center justify-center gap-1.5 transition-colors'
+          : 'min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp flex items-center justify-center gap-1.5 transition-colors';
+      }
+    }
+
+    function selectSort(val) {
+      state.sortBy = val;
+      document.querySelectorAll('.sort-chip').forEach((btn) => {
+        const active = btn.dataset.val === val;
+        btn.className = active
+          ? 'sort-chip min-h-[40px] rounded-xl text-xs font-semibold border bg-crimson border-crimson text-white'
+          : 'sort-chip min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp';
+      });
+
+      if (val === 'nearest' && state.userLat === null) {
+        showToast('Aktifkan GPS atau ketik titik area di nomor 1 agar jarak terdekat bisa dihitung');
+      }
+    }
+
+    function selectRadius(km) {
+      state.radiusKm = km;
+      document.querySelectorAll('.rad-chip').forEach((btn) => {
+        const active = parseInt(btn.dataset.val, 10) === km;
+        btn.className = active
+          ? 'rad-chip min-h-[36px] rounded-lg text-xs font-semibold border bg-crimson border-crimson text-white'
+          : 'rad-chip min-h-[36px] rounded-lg text-xs font-semibold border hairline bg-surface text-secondary';
+      });
+    }
+
+    function onRegionSelectChange() {
+      state.region = document.getElementById('region-select').value;
+    }
+
+    // 5. GPS & MANUAL AREA LOCATION (CENTERS MAP ON USER BEFORE SEARCH)
+    function placeUserPinOnMap() {
+      initMap();
+      if (!map) return;
+      if (userMarker) {
+        map.removeLayer(userMarker);
+        userMarker = null;
+      }
+
+      if (state.userLat !== null && state.userLon !== null) {
+        const uIcon = L.divIcon({
+          className: '',
+          html: `<div class="user-gps-pin" title="Lokasi Kamu: ${escapeHtml(state.userLabel)}"></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
+        userMarker = L.marker([state.userLat, state.userLon], { icon: uIcon, zIndexOffset: 950 }).addTo(map);
+        map.setView([state.userLat, state.userLon], 14, { animate: true });
+      }
+    }
+
+    function updateGpsUiState() {
+      const badge = document.getElementById('gps-badge-status');
+      const btnText = document.getElementById('btn-gps-text');
+      const btn = document.getElementById('btn-activate-gps');
+      const radBox = document.getElementById('radius-box');
+      const overlayMsg = document.getElementById('map-overlay-message');
+
+      if (state.userLat !== null) {
+        badge.textContent = `Aktif: ${state.userLabel}`;
+        badge.className = 'font-mono text-[11px] text-crimson font-semibold';
+        btnText.textContent = `Hapus Titik Lokasi (${state.userLabel})`;
+        btn.className = 'w-full min-h-[42px] py-2.5 px-4 rounded-xl bg-crimson border-crimson text-xs font-semibold text-white flex items-center justify-center gap-2 transition-colors';
+        radBox.classList.remove('hidden');
+
+        // Automatically switch sort to Nearest ("Terdekat dari Lokasi") when user sets GPS/location
+        selectSort('nearest');
+        if (!state.hasSearched && overlayMsg) {
+          overlayMsg.textContent = `Titik lokasi aktif di ${state.userLabel}. Tekan Tampilkan Rekomendasi Kafe untuk melihat kafe terdekat.`;
+        }
+      } else {
+        badge.textContent = 'Belum aktif';
+        badge.className = 'font-mono text-[11px] text-muted';
+        btnText.textContent = 'Aktifkan Lokasi GPS Saya';
+        btn.className = 'w-full min-h-[42px] py-2.5 px-4 rounded-xl bg-elevated hover:bg-crimson border hairline-strong text-xs font-semibold text-crisp flex items-center justify-center gap-2 transition-colors';
+        radBox.classList.add('hidden');
+        if (state.sortBy === 'nearest') {
+          selectSort('rating');
+        }
+      }
+    }
+
+    function activateUserGps() {
+      if (state.userLat !== null) {
+        state.userLat = null;
+        state.userLon = null;
+        state.userLabel = '';
+        document.getElementById('manual-loc-input').value = '';
+        if (userMarker && map) {
+          map.removeLayer(userMarker);
+          userMarker = null;
+        }
+        updateGpsUiState();
+        showToast('Titik lokasi GPS dinonaktifkan');
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        showToast('Browser tidak mendukung GPS. Ketik nama area pada kolom di bawahnya.');
+        return;
+      }
+
+      const btnText = document.getElementById('btn-gps-text');
+      btnText.textContent = 'Mendeteksi Koordinat GPS...';
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          state.userLat = pos.coords.latitude;
+          state.userLon = pos.coords.longitude;
+          state.userLabel = 'GPS Saya';
+          // When using GPS, default region to All so nearest cafes across city borders are found
+          state.region = '';
+          document.getElementById('region-select').value = '';
+          updateGpsUiState();
+          placeUserPinOnMap();
+          showToast('Lokasi GPS aktif. Klik Tampilkan Rekomendasi Kafe untuk mencari yang terdekat.');
+        },
+        () => {
+          btnText.textContent = 'Aktifkan Lokasi GPS Saya';
+          showToast('Akses GPS ditolak. Kamu bisa ketik nama area/kota di kolom manual.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    async function searchAreaCoordinate() {
+      const input = document.getElementById('manual-loc-input').value.trim();
+      if (!input) {
+        showToast('Ketik nama area atau kecamatan terlebih dahulu');
+        return;
+      }
+
+      showToast('Mencari titik koordinat area...');
+      try {
+        const suffix = state.region ? `${state.region}, Indonesia` : 'Indonesia';
+        const q = input.toLowerCase().includes('indonesia') ? input : `${input}, ${suffix}`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+          state.userLat = parseFloat(data[0].lat);
+          state.userLon = parseFloat(data[0].lon);
+          state.userLabel = data[0].display_name.split(',')[0];
+          updateGpsUiState();
+          placeUserPinOnMap();
+          showToast(`Titik lokasi disetel ke ${state.userLabel}`);
+        } else {
+          showToast('Area tidak ditemukan. Coba ketik nama kecamatan atau kota.');
+        }
+      } catch (e) {
+        showToast('Gagal mencari koordinat area.');
+      }
+    }
+
+    function resetFilterForm() {
+      state.region = '';
+      state.userLat = null;
+      state.userLon = null;
+      state.userLabel = '';
+      state.wifi = false;
+      state.power = false;
+      state.open24h = false;
+
+      document.getElementById('region-select').value = '';
+      document.getElementById('manual-loc-input').value = '';
+      document.getElementById('keyword-input').value = '';
+
+      selectBudget(50000);
+      selectRating(4.5);
+      selectRadius(5);
+      selectSort('rating');
+      updateGpsUiState();
+
+      ['fac-wifi', 'fac-power', 'fac-24h'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.setAttribute('aria-pressed', 'false');
+          btn.className = 'min-h-[40px] rounded-xl text-xs font-semibold border hairline bg-obsidian text-secondary hover:text-crisp flex items-center justify-center gap-1.5 transition-colors';
+        }
+      });
+
+      if (markersLayer) markersLayer.clearLayers();
+      if (userMarker && map) {
+        map.removeLayer(userMarker);
+        userMarker = null;
+      }
+      document.getElementById('map-bottom-overlay').classList.add('hidden');
+      document.getElementById('map-status-dot').className = 'w-2 h-2 rounded-full bg-muted';
+      document.getElementById('map-overlay-message').textContent = 'Filter direset. Atur lokasi & filter lalu klik Tampilkan Rekomendasi Kafe';
+      showToast('Filter telah diatur ulang');
+    }
+
+    // 6. STAGE 3: EXECUTE SEARCH & DISPLAY NEAREST / FILTERED MAP RESULTS
+    async function executeCafeSearch() {
+      initMap();
+      const btn = document.getElementById('btn-submit-search');
+      const lbl = document.getElementById('btn-submit-label');
+      btn.disabled = true;
+      lbl.textContent = 'MENCARI KAFE TERDEKAT...';
+
+      const payload = {
+        region: state.region,
+        max_budget: state.maxBudget,
+        min_rating: state.minRating,
+        wifi_required: state.wifi,
+        power_outlet_required: state.power,
+        open_24h_required: state.open24h,
+        open_now: null,
+        sort_by: state.userLat !== null && state.sortBy === 'nearest' ? 'nearest' : state.sortBy,
+        keyword: document.getElementById('keyword-input')?.value.trim() || '',
+        user_lat: state.userLat,
+        user_lon: state.userLon,
+        max_distance_km: state.userLat !== null ? state.radiusKm : 0
+      };
+
+      try {
+        const res = await fetch('/rekomendasi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Server error');
+        const data = await res.json();
+
+        state.hasSearched = true;
+        state.cafes = data.data || [];
+        state.selectedCafeId = state.cafes.length > 0 ? state.cafes[0].cafe_id : null;
+
+        // Switch Left Panel from Filter Form to Results List
+        document.getElementById('filter-pane').classList.add('hidden');
+        document.getElementById('results-pane').classList.remove('hidden');
+
+        // Update Status Bar
+        document.getElementById('results-count-text').textContent = `${state.cafes.length} Kafe Cocok`;
+        document.getElementById('map-status-dot').className = state.cafes.length > 0
+          ? 'w-2 h-2 rounded-full bg-crisp'
+          : 'w-2 h-2 rounded-full bg-crimson';
+        document.getElementById('map-overlay-message').textContent = data.message || `Ditemukan ${state.cafes.length} kafe`;
+
+        const activeCafe = state.cafes[0] || null;
+        renderResultsList(state.cafes, activeCafe);
+        renderMapResults(state.cafes, activeCafe, true);
+        renderFloatingCafeCard(activeCafe);
+        lucide.createIcons();
+      } catch (err) {
+        showToast('Gagal mengambil rekomendasi dari server');
+      } finally {
+        btn.disabled = false;
+        lbl.textContent = 'TAMPILKAN REKOMENDASI KAFE';
+      }
+    }
+
+    function backToFilterPane() {
+      document.getElementById('results-pane').classList.add('hidden');
+      document.getElementById('filter-pane').classList.remove('hidden');
+    }
+
+    // 7. RENDER RESULTS LIST & MAP MARKERS (STAGE 3)
+    function fmtRp(n) {
+      if (n >= 1000) return 'Rp ' + (n / 1000).toFixed(0) + 'rb';
+      return 'Rp ' + n;
+    }
+
+    function fmtDist(d) {
+      if (d === null || d === undefined) return '';
+      return d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderResultsList(cafes, activeCafe) {
+      const container = document.getElementById('results-list-container');
+
+      if (cafes.length === 0) {
+        container.innerHTML = `
+          <div class="bg-obsidian/80 border hairline-strong rounded-2xl p-6 text-center space-y-3">
+            <h3 class="font-display font-bold text-base text-crisp">Tidak Ada Kafe yang Memenuhi Filter</h3>
+            <p class="text-xs text-secondary leading-relaxed">
+              Coba perbesar radius jarak kilometer, naikkan batas budget, atau pilih wilayah kota lainnya.
+            </p>
+            <button 
+              type="button"
+              onclick="backToFilterPane()"
+              class="min-h-[40px] px-5 py-2 rounded-xl btn-crimson-grad text-xs font-bold uppercase tracking-wider text-white"
+            >
+              Ubah Filter Pencarian
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = cafes.slice(0, 120).map((c, idx) => {
+        const isSelected = activeCafe && c.cafe_id === activeCafe.cafe_id;
+        const distBadge = c.distance_km !== null && c.distance_km !== undefined
+          ? `<span class="px-2 py-0.5 rounded-md bg-crimson/20 border border-crimson/40 font-mono text-[11px] font-semibold text-flame">${fmtDist(c.distance_km)}</span>`
+          : '';
+
+        const facs = [];
+        if (c.has_wifi) facs.push('Wi-Fi');
+        if (c.has_power_outlet) facs.push('Colokan');
+        if (c.is_24h) facs.push('24 Jam');
+
+        return `
+          <article 
+            id="result-card-${c.cafe_id}"
+            class="bg-obsidian/85 border ${isSelected ? 'border-crimson ring-1 ring-crimson' : 'hairline'} hover:border-crimson/70 rounded-2xl p-4 transition-all"
+          >
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="px-2 py-0.5 rounded-md ${idx < 3 ? 'btn-crimson-grad text-white' : 'bg-surface border hairline text-secondary'} font-mono text-xs font-bold shrink-0">
+                  #${idx + 1}
+                </span>
+                <span class="text-[11px] font-medium text-muted truncate">
+                  ${escapeHtml(c.category || 'Coffee Shop')} · ${escapeHtml(c.region || 'Indonesia')}
+                </span>
+              </div>
+              <span class="font-mono text-xs font-bold text-crisp shrink-0">${c.rating.toFixed(1)} ★</span>
+            </div>
+
+            <h3 class="font-display font-bold text-sm text-crisp leading-snug">${escapeHtml(c.cafe_name)}</h3>
+            <p class="text-xs text-secondary mt-1 line-clamp-2">${escapeHtml(c.address)}</p>
+
+            <div class="flex flex-wrap items-center gap-1.5 mt-3">
+              ${distBadge}
+              <span class="px-2 py-0.5 rounded-md bg-surface border hairline font-mono text-[11px] text-crisp">
+                ${fmtRp(c.price_min)} - ${fmtRp(c.price_max)}
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-surface border hairline text-[11px] text-secondary">
+                ${escapeHtml(c.opening_hours)}
+              </span>
+              ${facs.map((f) => `<span class="px-2 py-0.5 rounded-md bg-elevated text-[11px] text-secondary">${f}</span>`).join('')}
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-3.5 pt-2.5 border-t hairline">
+              <button 
+                type="button"
+                onclick="focusCafeOnMap(${c.cafe_id})"
+                class="min-h-[38px] py-1.5 px-3 rounded-xl bg-surface hover:bg-elevated border hairline-strong text-xs font-semibold text-crisp transition-colors"
+              >
+                Lihat di Peta
+              </button>
+              <a 
+                href="${escapeHtml(c.google_maps_url)}" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="min-h-[38px] py-1.5 px-3 rounded-xl btn-crimson-grad text-xs font-semibold text-white flex items-center justify-center gap-1.5"
+              >
+                <span>Google Maps</span>
+                <i data-lucide="external-link" class="w-3 h-3" aria-hidden="true"></i>
+              </a>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderMapResults(cafes, activeCafe, autoFit) {
+      if (!map || !markersLayer) return;
+      markersLayer.clearLayers();
+
+      const bounds = [];
+
+      if (state.userLat !== null && state.userLon !== null) {
+        placeUserPinOnMap();
+        bounds.push([state.userLat, state.userLon]);
+      }
+
+      // Display top 80 matching markers so map stays clean and legible
+      const slice = cafes.slice(0, 80);
+      if (activeCafe && !slice.some((c) => c.cafe_id === activeCafe.cafe_id)) {
+        slice.push(activeCafe);
+      }
+
+      slice.forEach((cafe, idx) => {
+        const isSelected = activeCafe && cafe.cafe_id === activeCafe.cafe_id;
+        const showLabel = isSelected || idx < 10;
+        const shortName = escapeHtml(cafe.cafe_name.split('-')[0].split('·')[0].trim().substring(0, 18));
+
+        const icon = L.divIcon({
+          className: '',
+          html: `
+            <div class="cafe-pin-wrap ${isSelected ? 'is-active' : ''}">
+              ${showLabel ? `<div class="cafe-pin-label">${shortName}</div>` : ''}
+              <div class="cafe-pin-dot">${idx + 1}</div>
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const m = L.marker([cafe.latitude, cafe.longitude], {
+          icon,
+          zIndexOffset: isSelected ? 1000 : (100 - idx)
+        }).addTo(markersLayer);
+
+        m.on('click', () => {
+          focusCafeOnMap(cafe.cafe_id, false);
+        });
+
+        bounds.push([cafe.latitude, cafe.longitude]);
+      });
+
+      if (autoFit && bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [55, 55], maxZoom: 15 });
+      }
+    }
+
+    function renderFloatingCafeCard(cafe) {
+      const overlay = document.getElementById('map-bottom-overlay');
+      const card = document.getElementById('floating-cafe-card');
+
+      if (!cafe) {
+        overlay.classList.add('hidden');
+        return;
+      }
+
+      overlay.classList.remove('hidden');
+      const rankIdx = state.cafes.findIndex((c) => c.cafe_id === cafe.cafe_id) + 1;
+      const distText = cafe.distance_km !== null && cafe.distance_km !== undefined
+        ? `${fmtDist(cafe.distance_km)} dari lokasimu`
+        : cafe.region || 'Indonesia';
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="px-2.5 py-0.5 rounded-md btn-crimson-grad font-mono text-xs font-bold text-white">
+            Rekomendasi #${rankIdx}
+          </span>
+          <span class="font-mono text-xs font-bold text-crisp">
+            ${cafe.rating.toFixed(1)} ★ ${cafe.reviews_count ? `(${cafe.reviews_count} ulasan)` : ''}
+          </span>
+        </div>
+
+        <h3 class="font-display font-bold text-base text-crisp leading-snug">${escapeHtml(cafe.cafe_name)}</h3>
+        <p class="text-xs text-secondary mt-1 line-clamp-2">${escapeHtml(cafe.address)}</p>
+
+        <div class="grid grid-cols-3 gap-2 my-3 bg-obsidian/90 border hairline rounded-xl p-2.5 text-xs">
+          <div>
+            <span class="text-[10px] font-mono uppercase text-muted block">Harga</span>
+            <span class="font-semibold text-crisp">${fmtRp(cafe.price_min)}-${fmtRp(cafe.price_max)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-mono uppercase text-muted block">Jam Buka</span>
+            <span class="font-semibold text-crisp truncate block">${escapeHtml(cafe.opening_hours)}</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-mono uppercase text-muted block">Jarak / Area</span>
+            <span class="font-semibold text-flame truncate block">${escapeHtml(distText)}</span>
+          </div>
+        </div>
+
+        <a 
+          href="${escapeHtml(cafe.google_maps_url)}" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="w-full min-h-[40px] py-2 px-4 rounded-xl btn-crimson-grad text-xs font-bold uppercase tracking-wider text-white flex items-center justify-center gap-2 shadow-crimson-glow"
+        >
+          <span>Buka Rute di Google Maps</span>
+          <i data-lucide="external-link" class="w-3.5 h-3.5" aria-hidden="true"></i>
+        </a>
+      `;
+    }
+
+    function focusCafeOnMap(cafeId, panMap = true) {
+      state.selectedCafeId = cafeId;
+      const cafe = state.cafes.find((c) => c.cafe_id === cafeId);
+      if (!cafe) return;
+
+      renderResultsList(state.cafes, cafe);
+      renderMapResults(state.cafes, cafe, false);
+      renderFloatingCafeCard(cafe);
+      lucide.createIcons();
+
+      if (window.innerWidth < 1024 && !state.mobileShowingMap) {
+        toggleMobileMapPane();
+      }
+
+      if (panMap && map) {
+        setTimeout(() => {
+          map.invalidateSize();
+          map.setView([cafe.latitude, cafe.longitude], 16, { animate: true });
+        }, 60);
+      }
+    }
+
+    function fitMapToCurrentResults() {
+      if (!map || state.cafes.length === 0) return;
+      const bounds = state.cafes.slice(0, 80).map((c) => [c.latitude, c.longitude]);
+      if (state.userLat !== null) bounds.push([state.userLat, state.userLon]);
+      map.fitBounds(bounds, { padding: [55, 55], maxZoom: 15 });
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2800);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const yearEl = document.getElementById('copyright-year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+      loadRegionsMetadata();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

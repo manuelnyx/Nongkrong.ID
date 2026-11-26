@@ -1,0 +1,59 @@
+name: Auto Update Indonesia Cafe Dataset
+
+on:
+  schedule:
+    # Berjalan otomatis setiap tanggal 1 dan 15 pukul 02:00 WIB (19:00 UTC)
+    # Menggunakan kuota aman (~200 kafe per run = ~400 kafe/bulan, jauh di bawah batas gratis $5/bulan Apify)
+    - cron: '0 19 1,15 * *'
+  workflow_dispatch:
+    inputs:
+      target_query:
+        description: 'Opsional: Ketik query spesifik (misal: Coffee shop di Bandung; Coffee shop di Surabaya). Kosongkan untuk rotasi kota otomatis.'
+        required: false
+        default: ''
+      batch_cities:
+        description: 'Jumlah kota yang diambil pada run ini (default: 4)'
+        required: false
+        default: '4'
+      max_places_per_city:
+        description: 'Maksimal kafe per kota pada run ini (default: 50)'
+        required: false
+        default: '50'
+
+permissions:
+  contents: write
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas
+
+      - name: Run Apify Incremental Dataset Updater
+        env:
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+          TARGET_QUERY: ${{ github.event.inputs.target_query || '' }}
+          BATCH_CITIES: ${{ github.event.inputs.batch_cities || '4' }}
+          MAX_PLACES_PER_CITY: ${{ github.event.inputs.max_places_per_city || '50' }}
+        run: python scripts/update_dataset.py
+
+      - name: Commit and push updated dataset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n $(git status --porcelain apify_dataset.csv) ]]; then
+            git add apify_dataset.csv
+            git commit -m "chore(data): auto-update indonesia cafe dataset via apify pipeline"
+            git push origin main
+          else
+            echo "Tidak ada perubahan pada apify_dataset.csv"
+          fi
